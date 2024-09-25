@@ -35,7 +35,7 @@ import math
 import rclpy
 
 from rclpy.node import Node
-from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference
+from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference, Imu
 from geometry_msgs.msg import TwistStamped, QuaternionStamped
 from tf_transformations import quaternion_from_euler
 from libnmea_navsat_driver.checksum_utils import check_nmea_checksum
@@ -49,10 +49,14 @@ class Ros2NMEADriver(Node):
         self.fix_pub = self.create_publisher(NavSatFix, 'fix', 10)
         self.vel_pub = self.create_publisher(TwistStamped, 'vel', 10)
         self.heading_pub = self.create_publisher(QuaternionStamped, 'heading', 10)
+        self.imu_pub = self.create_publisher(Imu, 'imu/data', 10)
         self.time_ref_pub = self.create_publisher(TimeReference, 'time_reference', 10)
 
         self.time_ref_source = self.declare_parameter('time_ref_source', 'gps').value
         self.use_RMC = self.declare_parameter('useRMC', False).value
+        self.publish_imu = self.declare_parameter('publish_imu', False).value
+        self.yaw_variance = self.declare_parameter('yaw_variance', 0.05).value  # Suitable default value for yaw variance
+
         self.valid_fix = False
 
         # epe = estimated position error
@@ -269,6 +273,21 @@ class Ros2NMEADriver(Node):
                 current_heading.quaternion.z = q[2]
                 current_heading.quaternion.w = q[3]
                 self.heading_pub.publish(current_heading)
+
+                if self.publish_imu:
+                    # Create and publish IMU message
+                    current_imu = Imu()
+                    current_imu.header.stamp = current_time
+                    current_imu.header.frame_id = frame_id
+                    current_imu.orientation.x = q[0]
+                    current_imu.orientation.y = q[1]
+                    current_imu.orientation.z = q[2]
+                    current_imu.orientation.w = q[3]
+                    current_imu.orientation_covariance[0] = 0.0  # We don't have real covariance data
+                    current_imu.orientation_covariance[4] = 0.0
+                    current_imu.orientation_covariance[8] = self.yaw_variance
+                    self.imu_pub.publish(current_imu)
+
         else:
             return False
         return True
