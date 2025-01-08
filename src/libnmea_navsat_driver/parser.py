@@ -136,6 +136,13 @@ parse_maps = {
     "HDT": [
         ("heading", safe_float, 1),
     ],
+    "HDG": [
+        ("magnetic_heading", safe_float, 1),
+        ("magnetic_deviation", safe_float, 2),
+        ("deviation_direction", str, 3),
+        ("magnetic_variation", safe_float, 4),
+        ("variation_direction", str, 5),
+    ],
     "VTG": [
         ("true_course", convert_deg_to_rads, 1),
         ("speed", convert_knots_to_mps, 5)

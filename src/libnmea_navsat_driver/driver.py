@@ -40,7 +40,7 @@ from geometry_msgs.msg import TwistStamped, QuaternionStamped
 from tf_transformations import quaternion_from_euler
 from libnmea_navsat_driver.checksum_utils import check_nmea_checksum
 from libnmea_navsat_driver import parser
-
+from pygeomag import GeoMag
 
 class Ros2NMEADriver(Node):
     def __init__(self):
@@ -287,7 +287,56 @@ class Ros2NMEADriver(Node):
                     current_imu.orientation_covariance[4] = 0.0
                     current_imu.orientation_covariance[8] = self.yaw_variance
                     self.imu_pub.publish(current_imu)
+        elif 'HDG' in parsed_sentence:
+            data = parsed_sentence['HDG']
+            
+            magnetic_heading = data['magnetic_heading']
+            deviation = data['magnetic_deviation']
+            deviation_direction = data['deviation_direction']
+            variation = data['magnetic_variation']
+            variation_direction = data['variation_direction']
 
+            # Calculate variation (declination) if it's missing or invalid
+            if math.isnan(variation):
+                geomag = GeoMag()
+                declination_data = geomag.GeoMag(current_fix.latitude, current_fix.longitude)
+                variation = declination_data.dec
+                variation_direction = 'E' if variation >= 0 else 'W'
+            else:
+                rospy.logwarn(f"HDG message did not provide magnetic variation!")
+                variation = 0.0
+                variation_direction = 'E'
+
+            if not math.isnan(magnetic_heading):
+                # Publish the magnetic heading as a QuaternionStamped
+                current_heading = QuaternionStamped()
+                current_heading.header.stamp = current_time
+                current_heading.header.frame_id = frame_id
+
+                # Convert magnetic heading to radians and create quaternion
+                # Add the variation to convert to true heading
+                true_heading = magnetic_heading + variation if variation_direction == 'E' else magnetic_heading - variation
+                q = quaternion_from_euler(0, 0, math.radians(90 - true_heading))
+                current_heading.quaternion.x = q[0]
+                current_heading.quaternion.y = q[1]
+                current_heading.quaternion.z = q[2]
+                current_heading.quaternion.w = q[3]
+                self.heading_pub.publish(current_heading)
+
+                if self.publish_imu:
+                    # Create and publish IMU message
+                    current_imu = Imu()
+                    current_imu.header.stamp = current_time
+                    current_imu.header.frame_id = frame_id
+                    current_imu.orientation.x = q[0]
+                    current_imu.orientation.y = q[1]
+                    current_imu.orientation.z = q[2]
+                    current_imu.orientation.w = q[3]
+                    current_imu.orientation_covariance[0] = 0.0  # We don't have real covariance data
+                    current_imu.orientation_covariance[4] = 0.0
+                    current_imu.orientation_covariance[8] = self.yaw_variance
+                    self.imu_pub.publish(current_imu)
+                    
         else:
             return False
         return True
