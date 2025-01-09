@@ -291,8 +291,6 @@ class Ros2NMEADriver(Node):
             data = parsed_sentence['HDG']
             
             magnetic_heading = data['magnetic_heading']
-            deviation = data['magnetic_deviation']
-            deviation_direction = data['deviation_direction']
             variation = data['magnetic_variation']
             variation_direction = data['variation_direction']
 
@@ -303,7 +301,7 @@ class Ros2NMEADriver(Node):
                 variation = declination_data.dec
                 variation_direction = 'E' if variation >= 0 else 'W'
             else:
-                rospy.logwarn(f"HDG message did not provide magnetic variation!")
+                self.get_logger().debug(f"HDG message did not provide magnetic variation!")
                 variation = 0.0
                 variation_direction = 'E'
 
