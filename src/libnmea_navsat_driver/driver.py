@@ -314,6 +314,10 @@ class Ros2NMEADriver(Node):
                 # Convert magnetic heading to radians and create quaternion
                 # Add the variation to convert to true heading
                 true_heading = magnetic_heading + variation if variation_direction == 'E' else magnetic_heading - variation
+                
+                # Wrap the true heading to [0, 360)
+                true_heading = (true_heading + 360) % 360
+
                 q = quaternion_from_euler(0, 0, math.radians(90 - true_heading))
                 current_heading.quaternion.x = q[0]
                 current_heading.quaternion.y = q[1]
