@@ -300,10 +300,6 @@ class Ros2NMEADriver(Node):
                 declination_data = geomag.GeoMag(current_fix.latitude, current_fix.longitude)
                 variation = declination_data.dec
                 variation_direction = 'E' if variation >= 0 else 'W'
-            else:
-                self.get_logger().debug(f"HDG message did not provide magnetic variation!")
-                variation = 0.0
-                variation_direction = 'E'
 
             if not math.isnan(magnetic_heading):
                 # Publish the magnetic heading as a QuaternionStamped
