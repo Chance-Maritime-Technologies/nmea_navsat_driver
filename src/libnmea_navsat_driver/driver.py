@@ -292,6 +292,10 @@ class Ros2NMEADriver(Node):
                     current_imu.orientation_covariance[0] = 0.0  # We don't have real covariance data
                     current_imu.orientation_covariance[4] = 0.0
                     current_imu.orientation_covariance[8] = self.yaw_variance
+
+                    current_imu.angular_velocity_covariance[0] = -1;
+                    current_imu.linear_acceleration_covariance[0] = -1;
+
                     self.imu_pub.publish(current_imu)
         elif 'HDG' in parsed_sentence:
             data = parsed_sentence['HDG']
@@ -336,6 +340,10 @@ class Ros2NMEADriver(Node):
                     current_imu.orientation_covariance[0] = 0.0  # We don't have real covariance data
                     current_imu.orientation_covariance[4] = 0.0
                     current_imu.orientation_covariance[8] = self.yaw_variance
+
+                    current_imu.angular_velocity_covariance[0] = -1;
+                    current_imu.linear_acceleration_covariance[0] = -1;
+
                     self.imu_pub.publish(current_imu)
         else:
             return False
