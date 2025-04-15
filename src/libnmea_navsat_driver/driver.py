@@ -36,7 +36,7 @@ import rclpy
 
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference, Imu
-from geometry_msgs.msg import TwistStamped, QuaternionStamped
+from geometry_msgs.msg import TwistStamped, TwistWithCovarianceStamped, QuaternionStamped
 from tf_transformations import quaternion_from_euler
 from libnmea_navsat_driver.checksum_utils import check_nmea_checksum
 from libnmea_navsat_driver import parser
@@ -47,7 +47,7 @@ class Ros2NMEADriver(Node):
         super().__init__('nmea_navsat_driver')
 
         self.fix_pub = self.create_publisher(NavSatFix, 'fix', 10)
-        self.vel_pub = self.create_publisher(TwistStamped, 'vel', 10)
+        self.vel_pub = self.create_publisher(TwistWithCovarianceStamped, 'vel', 10)
         self.heading_pub = self.create_publisher(QuaternionStamped, 'heading', 10)
         self.imu_pub = self.create_publisher(Imu, 'imu/data', 10)
         self.time_ref_pub = self.create_publisher(TimeReference, 'time_reference', 10)
@@ -192,6 +192,10 @@ class Ros2NMEADriver(Node):
             hdop = data['hdop']
 
             if not math.isnan(hdop):
+#                current_fix.position_covariance[0] = 100
+#                current_fix.position_covariance[4] = 100
+#                current_fix.position_covariance[8] = 100
+ 
                 current_fix.position_covariance[0] = (hdop * self.lon_std_dev) ** 2
                 current_fix.position_covariance[4] = (hdop * self.lat_std_dev) ** 2
                 current_fix.position_covariance[8] = (2 * hdop * self.alt_std_dev) ** 2  # FIXME
@@ -212,11 +216,22 @@ class Ros2NMEADriver(Node):
 
             # Only report VTG data when you've received a valid GGA fix as well.
             if self.valid_fix:
-                current_vel = TwistStamped()
+                current_vel = TwistWithCovarianceStamped()
                 current_vel.header.stamp = current_time
                 current_vel.header.frame_id = frame_id
-                current_vel.twist.linear.x = data['speed'] * math.sin(data['true_course'])
-                current_vel.twist.linear.y = data['speed'] * math.cos(data['true_course'])
+
+                heading = 1.5708 - data['true_course']
+
+                current_vel.twist.twist.linear.x = data['speed'] * math.cos(heading)
+                current_vel.twist.twist.linear.y = data['speed'] * math.sin(heading)
+ 
+                current_vel.twist.covariance[0] = 0.1
+                current_vel.twist.covariance[7] = 0.1
+                current_vel.twist.covariance[14] = 0
+                current_vel.twist.covariance[21] = 0
+                current_vel.twist.covariance[28] = 0
+                current_vel.twist.covariance[35] = 0
+ 
                 self.vel_pub.publish(current_vel)
 
         elif 'RMC' in parsed_sentence:
@@ -251,14 +266,25 @@ class Ros2NMEADriver(Node):
                     current_time_ref.time_ref = rclpy.time.Time(seconds=data['utc_time']).to_msg()
                     self.time_ref_pub.publish(current_time_ref)
 
-            # Publish velocity from RMC regardless, since GGA doesn't provide it.
-            if data['fix_valid']:
-                current_vel = TwistStamped()
-                current_vel.header.stamp = current_time
-                current_vel.header.frame_id = frame_id
-                current_vel.twist.linear.x = data['speed'] * math.sin(data['true_course'])
-                current_vel.twist.linear.y = data['speed'] * math.cos(data['true_course'])
-                self.vel_pub.publish(current_vel)
+                # Publish velocity from RMC regardless, since GGA doesn't provide it.
+                if data['fix_valid']:
+                    current_vel = TwistWithCovarianceStamped()
+                    current_vel.header.stamp = current_time
+                    current_vel.header.frame_id = frame_id
+
+                    heading = 1.5708 - data['true_course']
+   
+                    current_vel.twist.twist.linear.x = data['speed'] * math.cos(heading)
+                    current_vel.twist.twist.linear.y = data['speed'] * math.sin(heading)
+ 
+                    current_vel.twist.covariance[0] = 0.1
+                    current_vel.twist.covariance[7] = 0.1
+                    current_vel.twist.covariance[14] = 0
+                    current_vel.twist.covariance[21] = 0
+                    current_vel.twist.covariance[28] = 0
+                    current_vel.twist.covariance[35] = 0
+ 
+                    self.vel_pub.publish(current_vel)
         elif 'GST' in parsed_sentence:
             data = parsed_sentence['GST']
 
