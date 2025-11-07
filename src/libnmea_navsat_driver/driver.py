@@ -256,7 +256,8 @@ class Ros2NMEADriver(Node):
                     longitude = -longitude
                 current_fix.longitude = longitude
 
-                current_fix.altitude = float('NaN')
+                #current_fix.altitude = float('NaN')
+                current_fix.altitude = float(0)
                 current_fix.position_covariance_type = \
                     NavSatFix.COVARIANCE_TYPE_UNKNOWN
 
@@ -283,7 +284,6 @@ class Ros2NMEADriver(Node):
                     current_vel.twist.covariance[21] = 0
                     current_vel.twist.covariance[28] = 0
                     current_vel.twist.covariance[35] = 0
- 
                     self.vel_pub.publish(current_vel)
         elif 'GST' in parsed_sentence:
             data = parsed_sentence['GST']
