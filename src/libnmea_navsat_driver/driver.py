@@ -295,7 +295,7 @@ class Ros2NMEADriver(Node):
             self.alt_std_dev = data['alt_std_dev']
         elif 'HDT' in parsed_sentence:
             data = parsed_sentence['HDT']
-            if data['heading']:
+            if not math.isnan(data['heading']):
                 current_heading = QuaternionStamped()
                 current_heading.header.stamp = current_time
                 current_heading.header.frame_id = frame_id
